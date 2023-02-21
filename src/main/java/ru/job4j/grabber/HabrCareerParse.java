@@ -41,27 +41,35 @@ public class HabrCareerParse implements Parse {
                     LocalDateTime date = new HabrCareerDateTimeParser().parse(dateElement.attr("datetime"));
                     String vacancyLink = String.format("%s%s", link, titleElement.child(0).attr("href"));
                     String description = retrieveDescription(vacancyLink);
-                    /*
-                    System.out.printf("%s %s %s %n%s%n", date, vacancyName, vacancyLink, description);
-                     */
                     listOfPosts.add(new Post(vacancyName, vacancyLink, description, date));
                 });
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new IllegalArgumentException("Exception in method 'list()'");
             }
         }
         return listOfPosts;
     }
 
     private static String retrieveDescription(String link) {
-        String result = null;
+        String result = "";
         try {
             Document document = Jsoup.connect(link).get();
             Element descriptionElement = document.selectFirst(".vacancy-description__text");
             result = Objects.requireNonNull(descriptionElement.text());
+
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalArgumentException("Exception in method 'retrieveDescription()'");
         }
         return result;
+    }
+
+    private Post post(Element row) {
+        Element titleElement = row.select(".vacancy-card__title").first();
+        Element dateElement = row.select(".vacancy-card__date").first().child(0);
+        String vacancyName = titleElement.text();
+        LocalDateTime date = new HabrCareerDateTimeParser().parse(dateElement.attr("datetime"));
+        String vacancyLink = String.format("%s%s", link, titleElement.child(0).attr("href"));
+        String description = retrieveDescription(vacancyLink);
+        return new Post(vacancyName, vacancyLink, description, date);
     }
 }
