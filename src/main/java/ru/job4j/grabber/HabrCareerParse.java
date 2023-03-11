@@ -34,15 +34,7 @@ public class HabrCareerParse implements Parse {
             try {
                 Document document = connection.get();
                 Elements rows = document.select(".vacancy-card__inner");
-                rows.forEach(row -> {
-                    Element titleElement = row.select(".vacancy-card__title").first();
-                    Element dateElement = row.select(".vacancy-card__date").first().child(0);
-                    String vacancyName = titleElement.text();
-                    LocalDateTime date = new HabrCareerDateTimeParser().parse(dateElement.attr("datetime"));
-                    String vacancyLink = String.format("%s%s", link, titleElement.child(0).attr("href"));
-                    String description = retrieveDescription(vacancyLink);
-                    listOfPosts.add(new Post(vacancyName, vacancyLink, description, date));
-                });
+                rows.forEach(row -> listOfPosts.add(post(row)));
             } catch (IOException e) {
                 throw new IllegalArgumentException("Exception in method 'list()'");
             }
@@ -68,7 +60,7 @@ public class HabrCareerParse implements Parse {
         Element dateElement = row.select(".vacancy-card__date").first().child(0);
         String vacancyName = titleElement.text();
         LocalDateTime date = new HabrCareerDateTimeParser().parse(dateElement.attr("datetime"));
-        String vacancyLink = String.format("%s%s", link, titleElement.child(0).attr("href"));
+        String vacancyLink = String.format("%s%s", SOURCE_LINK, titleElement.child(0).attr("href"));
         String description = retrieveDescription(vacancyLink);
         return new Post(vacancyName, vacancyLink, description, date);
     }
