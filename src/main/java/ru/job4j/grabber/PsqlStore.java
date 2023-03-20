@@ -15,40 +15,41 @@ public class PsqlStore implements Store {
     public PsqlStore(Properties cfg) {
         try {
             Class.forName(cfg.getProperty("jdbc.driver"));
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-        try {
             cnn = DriverManager.getConnection(
                     cfg.getProperty("url"),
                     cfg.getProperty("login"),
                     cfg.getProperty("password")
             );
-        } catch (SQLException e) {
-            throw new IllegalArgumentException("get property exception");
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
         }
     }
 
     @Override
     public void save(Post post) {
         try (PreparedStatement ps = cnn.prepareStatement(
-                "insert into post(name, link, description, created)"
-                        + "values (?, ?, ?, ?) on conflict (link) do nothing;",
+                "insert into post(title, description, link, created) values (?, ?, ?, ?)"
+                        + "on conflict (link) do nothing",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, post.getTitle());
-            ps.setString(2, post.getLink());
-            ps.setString(3, post.getDescription());
+            ps.setString(2, post.getDescription());
+            ps.setString(3, post.getLink());
             ps.setTimestamp(4, Timestamp.valueOf(post.getCreated()));
             ps.execute();
+            try (ResultSet generatedKey = ps.getGeneratedKeys()) {
+                if (generatedKey.next()) {
+                    post.setId(generatedKey.getInt(1));
+                }
+            }
         } catch (SQLException e) {
-            throw new IllegalArgumentException("Exception in save()");
+            throw new IllegalArgumentException("Exception in save() + ",  e);
         }
     }
 
     @Override
     public List<Post> getAll() {
         List<Post> rsl = new ArrayList<>();
-        try (PreparedStatement ps = cnn.prepareStatement("select * from post;")) {
+        try (PreparedStatement ps = cnn.prepareStatement("select * from post")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     rsl.add(createPost(rs));
@@ -63,7 +64,7 @@ public class PsqlStore implements Store {
     @Override
     public Post findById(int id) {
         Post rsl = null;
-        try (PreparedStatement ps = cnn.prepareStatement("select * from post where id = ?;")) {
+        try (PreparedStatement ps = cnn.prepareStatement("select * from post where id = ?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -71,7 +72,7 @@ public class PsqlStore implements Store {
                 }
             }
         } catch (SQLException e) {
-            throw new IllegalArgumentException("Exception in findById()");
+            throw new IllegalArgumentException("Exception in findById() + ", e);
         }
         return rsl;
     }
@@ -90,15 +91,18 @@ public class PsqlStore implements Store {
 
     public static void main(String[] args) {
         Properties config = new Properties();
-        try (InputStream in = PsqlStore.class.getClassLoader().getResourceAsStream("rabbit.properties")) {
+        try (InputStream in = PsqlStore.class.getClassLoader().getResourceAsStream("grabber.properties")) {
             config.load(in);
         } catch (IOException e) {
-            throw new IllegalArgumentException("Exception in main");
+            throw new IllegalArgumentException("Exception in InputStream");
         }
-        Store store = new PsqlStore(config);
-        store.save(new Post("title1", "link1", "description1", LocalDateTime.now()));
-        store.save(new Post("title2", "link2", "description2", LocalDateTime.now()));
-        System.out.println(store.findById(1));
-        store.getAll().forEach(System.out::println);
+        try (Store store = new PsqlStore(config)) {
+            store.save(new Post("title1", "link1", "description1", LocalDateTime.now()));
+            store.save(new Post("title2", "link2", "description2", LocalDateTime.now()));
+            System.out.println(store.findById(1));
+            store.getAll().forEach(System.out::println);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Exception in new PsqlStore + ", e);
+        }
     }
 }
