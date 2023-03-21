@@ -2,7 +2,6 @@ package ru.job4j.grabber;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -10,7 +9,7 @@ import java.util.List;
 import java.util.Properties;
 
 public class PsqlStore implements Store {
-    private Connection cnn;
+    private final Connection cnn;
 
     public PsqlStore(Properties cfg) {
         try {
@@ -21,7 +20,7 @@ public class PsqlStore implements Store {
         try {
             cnn = DriverManager.getConnection(
                     cfg.getProperty("url"),
-                    cfg.getProperty("login"),
+                    cfg.getProperty("username"),
                     cfg.getProperty("password")
             );
         } catch (SQLException e) {
@@ -32,12 +31,12 @@ public class PsqlStore implements Store {
     @Override
     public void save(Post post) {
         try (PreparedStatement ps = cnn.prepareStatement(
-                "insert into post(name, link, description, created)"
+                "insert into post(title, description, link, created)"
                         + "values (?, ?, ?, ?) on conflict (link) do nothing;",
                 Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, post.getTitle());
-            ps.setString(2, post.getLink());
-            ps.setString(3, post.getDescription());
+            ps.setString(2, post.getDescription());
+            ps.setString(3, post.getLink());
             ps.setTimestamp(4, Timestamp.valueOf(post.getCreated()));
             ps.execute();
         } catch (SQLException e) {
@@ -90,7 +89,7 @@ public class PsqlStore implements Store {
 
     public static void main(String[] args) {
         Properties config = new Properties();
-        try (InputStream in = PsqlStore.class.getClassLoader().getResourceAsStream("rabbit.properties")) {
+        try (InputStream in = PsqlStore.class.getClassLoader().getResourceAsStream("app.properties")) {
             config.load(in);
         } catch (IOException e) {
             throw new IllegalArgumentException("Exception in main");
