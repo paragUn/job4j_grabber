@@ -47,7 +47,7 @@ public class PsqlStore implements Store {
     @Override
     public List<Post> getAll() {
         List<Post> rsl = new ArrayList<>();
-        try (PreparedStatement ps = cnn.prepareStatement("select * from post;")) {
+        try (PreparedStatement ps = cnn.prepareStatement("select * from post")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     rsl.add(createPost(rs));
@@ -62,7 +62,7 @@ public class PsqlStore implements Store {
     @Override
     public Post findById(int id) {
         Post rsl = null;
-        try (PreparedStatement ps = cnn.prepareStatement("select * from post where id = ?;")) {
+        try (PreparedStatement ps = cnn.prepareStatement("select * from post where id = ?")) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -94,10 +94,14 @@ public class PsqlStore implements Store {
         } catch (IOException e) {
             throw new IllegalArgumentException("Exception in main");
         }
-        Store store = new PsqlStore(config);
-        store.save(new Post("title1", "link1", "description1", LocalDateTime.now()));
-        store.save(new Post("title2", "link2", "description2", LocalDateTime.now()));
-        System.out.println(store.findById(1));
-        store.getAll().forEach(System.out::println);
+        try (Store store = new PsqlStore(config)) {
+            store.save(new Post("title1", "link1", "description1", LocalDateTime.now()));
+            store.save(new Post("title2", "link2", "description2", LocalDateTime.now()));
+            System.out.println(store.findById(1));
+            store.getAll().forEach(System.out::println);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Exception in new PsqlStore() + ", e);
+        }
+
     }
 }
